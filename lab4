@@ -1,0 +1,61 @@
+-- Создание таблиц
+CREATE TABLE employees (
+    emp_id NUMBER PRIMARY KEY,
+    name VARCHAR2(100),
+    salary NUMBER,
+    department VARCHAR2(50)
+);
+
+CREATE TABLE employees_log (
+    log_id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    emp_id NUMBER,
+    action VARCHAR2(50),
+    log_date TIMESTAMP DEFAULT SYSTIMESTAMP
+);
+
+-- Процедура добавления сотрудника
+CREATE OR REPLACE PROCEDURE add_employee(
+    p_emp_id NUMBER,
+    p_name VARCHAR2,
+    p_salary NUMBER,
+    p_department VARCHAR2
+) AS
+BEGIN
+    INSERT INTO employees (emp_id, name, salary, department)
+    VALUES (p_emp_id, p_name, p_salary, p_department);
+END;
+/
+
+-- Функция расчета средней зарплаты в отделе
+CREATE OR REPLACE FUNCTION avg_salary(p_department VARCHAR2) RETURN NUMBER IS
+    v_avg_salary NUMBER;
+BEGIN
+    SELECT AVG(salary) INTO v_avg_salary FROM employees WHERE department = p_department;
+    RETURN v_avg_salary;
+END;
+/
+
+-- Триггер логирования изменений
+CREATE OR REPLACE TRIGGER trg_employee_changes
+AFTER INSERT OR DELETE OR UPDATE ON employees
+FOR EACH ROW
+BEGIN
+    IF INSERTING THEN
+        INSERT INTO employees_log (emp_id, action) VALUES (:NEW.emp_id, 'INSERT');
+    ELSIF UPDATING THEN
+        INSERT INTO employees_log (emp_id, action) VALUES (:NEW.emp_id, 'UPDATE');
+    ELSIF DELETING THEN
+        INSERT INTO employees_log (emp_id, action) VALUES (:OLD.emp_id, 'DELETE');
+    END IF;
+END;
+/
+
+-- Запросы
+-- 1. Получение всех сотрудников
+SELECT * FROM employees;
+
+-- 2. Получение среднего оклада по отделу
+SELECT avg_salary('IT') FROM dual;
+
+-- 3. Просмотр логов изменений
+SELECT * FROM employees_log;
